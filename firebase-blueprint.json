@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "userProfile": {
+      "title": "UserProfile",
+      "description": "User account profile storing learning progress, streak, XP, gems, and hearts in ByteLingo",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name or nickname"
+        },
+        "hearts": {
+          "type": "number",
+          "description": "Current lives/hearts count (0-5)"
+        },
+        "maxHearts": {
+          "type": "number",
+          "description": "Maximum hearts capacity"
+        },
+        "gems": {
+          "type": "number",
+          "description": "Total accumulated crystals/gems"
+        },
+        "xp": {
+          "type": "number",
+          "description": "Experience points earned"
+        },
+        "streak": {
+          "type": "number",
+          "description": "Consecutive active days streak"
+        },
+        "longestStreak": {
+          "type": "number",
+          "description": "Record longest streak in days"
+        },
+        "totalDaysActive": {
+          "type": "number",
+          "description": "Total days user was active"
+        },
+        "lastActiveDate": {
+          "type": "string",
+          "description": "Last active ISO date string YYYY-MM-DD"
+        },
+        "completedLessonIds": {
+          "type": "array",
+          "description": "List of completed lesson IDs"
+        },
+        "activeTrack": {
+          "type": "string",
+          "description": "Current active programming language track"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark"],
+          "description": "User global UI theme preference ('light' or 'dark')"
+        },
+        "league": {
+          "type": "string",
+          "description": "Current competitive league tier"
+        },
+        "notificationPreferences": {
+          "type": "object",
+          "description": "User daily streak reminder preferences via Web Notification API",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "time": { "type": "string" },
+            "sound": { "type": "boolean" },
+            "lastNotifiedDate": { "type": "string" }
+          }
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last profile update timestamp"
+        }
+      },
+      "required": ["uid", "email", "hearts", "gems", "xp", "streak"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "userProfile",
+      "description": "Stores user profile and learning progress scoped strictly to the authenticated user"
+    }
+  }
+}

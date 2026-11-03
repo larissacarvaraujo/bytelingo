@@ -1,0 +1,6 @@
+{
+  "name": "ByteLingo - Duolingo para Programação",
+  "description": "Aprenda lógica de programação, Python, JavaScript, Rust e Java de forma gamificada com exercícios práticos interativos, desafios diários e feedback instantâneo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
