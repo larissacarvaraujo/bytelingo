@@ -19,6 +19,7 @@ import {
   loginAsGuest,
 } from '../services/authService';
 import { playSound } from '../utils/sound';
+import { CarcaraIcon } from './MascotByte';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -134,8 +135,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             <X className="w-5 h-5" />
           </button>
 
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center mx-auto mb-3 shadow-inner text-3xl">
-            🦉
+          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center mx-auto mb-3 shadow-inner overflow-hidden">
+            <CarcaraIcon size={46} animation="idle" mood="happy" />
           </div>
 
           <h2 className="text-2xl font-black tracking-tight">

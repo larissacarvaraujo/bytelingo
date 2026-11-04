@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Flame, Heart, Gem, Zap, Volume2, VolumeX, Terminal, Trophy, ShoppingBag, Target, Bot, Sparkles, User as UserIcon, Cloud, LogOut, CheckCircle, Sun, Moon } from 'lucide-react';
+import { Flame, Heart, Gem, Zap, Volume2, VolumeX, Terminal, Trophy, ShoppingBag, Target, Bot, Sparkles, User as UserIcon, Cloud, LogOut, CheckCircle, Sun, Moon, Award, GraduationCap } from 'lucide-react';
 import { Language, UserProfile } from '../types';
 import { TRACKS } from '../data/curriculum';
 import { playSound } from '../utils/sound';
+import { CarcaraIcon } from './MascotByte';
+import { getUserLevelInfo } from '../utils/levelHelper';
 
 interface NavbarUser {
   uid: string;
@@ -21,6 +23,8 @@ interface NavbarProps {
   onOpenLeaderboard: () => void;
   onOpenStreakCalendar?: () => void;
   onOpenByteChat?: () => void;
+  onOpenLevelModal?: () => void;
+  onOpenCertificate?: () => void;
   currentUser?: NavbarUser | null;
   onOpenAuth?: () => void;
   onLogout?: () => void;
@@ -41,6 +45,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLeaderboard,
   onOpenStreakCalendar,
   onOpenByteChat,
+  onOpenLevelModal,
+  onOpenCertificate,
   currentUser,
   onOpenAuth,
   onLogout,
@@ -53,6 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const currentTrack = TRACKS.find((t) => t.id === activeTrack) || TRACKS[0];
+  const levelInfo = getUserLevelInfo(user.xp);
 
   return (
     <header className="sticky top-0 z-40 bg-white dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800 shadow-xs transition-colors duration-200">
@@ -60,7 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Brand & Track Selector */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 select-none cursor-pointer">
-            <span className="text-2xl">🦉</span>
+            <CarcaraIcon size={28} animation="idle" mood="happy" />
             <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight hidden sm:inline">
               Byte<span className="text-slate-800 dark:text-slate-100">Lingo</span>
             </span>
@@ -181,6 +188,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ShoppingBag className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
             <span>Loja</span>
           </button>
+
+          {onOpenCertificate && (
+            <button
+              onClick={() => {
+                playSound('click');
+                onOpenCertificate();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100/60 dark:hover:bg-amber-950/60 border border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 transition-colors shadow-2xs"
+              title="Certificados de Conclusão de Curso"
+              aria-label="Abrir Certificados"
+            >
+              <GraduationCap className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>Certificados</span>
+            </button>
+          )}
         </div>
 
         {/* Game Stats HUD */}
@@ -236,11 +258,45 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="tabular-nums">{user.hearts}</span>
           </div>
 
-          {/* XP */}
-          <div className="hidden sm:flex items-center gap-1 text-yellow-500 font-extrabold text-sm select-none">
-            <Zap className="w-4 h-4 fill-yellow-400 stroke-yellow-600" />
-            <span className="tabular-nums text-slate-700 dark:text-slate-200">{user.xp} XP</span>
-          </div>
+          {/* User Level Progression Bar in Header */}
+          <button
+            onClick={() => {
+              playSound('click');
+              if (onOpenLevelModal) onOpenLevelModal();
+            }}
+            className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-2.5 py-1 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 hover:bg-amber-100/90 dark:hover:bg-amber-900/60 border border-amber-300 dark:border-amber-700/80 transition-all select-none cursor-pointer group shadow-2xs hover:scale-105"
+            title={`Nível ${levelInfo.level}: ${levelInfo.title} (${user.xp} XP). Clique para ver sua jornada de níveis!`}
+            aria-label={`Abrir progressão do Nível ${levelInfo.level} (${levelInfo.title})`}
+          >
+            {/* Level Badge Pill */}
+            <span className="flex items-center gap-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] sm:text-xs font-black px-1.5 py-0.5 rounded-lg shadow-2xs">
+              <Zap className="w-3 h-3 fill-white" />
+              <span>Nv.{levelInfo.level}</span>
+            </span>
+
+            {/* Level Progress Bar & XP (desktop & tablet) */}
+            <div className="hidden sm:flex flex-col text-left justify-center">
+              <div className="flex items-center justify-between gap-2 leading-none">
+                <span className="text-[10px] font-extrabold text-amber-900 dark:text-amber-200 line-clamp-1 max-w-[85px]">
+                  {levelInfo.title}
+                </span>
+                <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 tabular-nums">
+                  {user.xp} XP
+                </span>
+              </div>
+              <div className="w-20 sm:w-24 h-1.5 bg-amber-200/80 dark:bg-slate-700 rounded-full overflow-hidden mt-1 p-0">
+                <div
+                  className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${levelInfo.progressPercent}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Mobile compact XP indicator */}
+            <span className="sm:hidden text-xs font-black text-amber-800 dark:text-amber-200 tabular-nums">
+              {user.xp} XP
+            </span>
+          </button>
 
           {/* Global Theme Toggle Button */}
           {onToggleTheme && (
@@ -314,8 +370,51 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
 
                     <div className="space-y-2">
+                      {/* Level Progression Card in Profile Menu */}
+                      <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border border-amber-200 dark:border-amber-800/60">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base">{levelInfo.badgeIcon}</span>
+                            <div>
+                              <div className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                                <span>Nível {levelInfo.level}</span>
+                                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-extrabold">({levelInfo.title})</span>
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-[10px] font-black text-amber-700 dark:text-amber-300">
+                            {levelInfo.progressPercent}%
+                          </span>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="w-full h-2 bg-amber-200/60 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
+                            style={{ width: `${levelInfo.progressPercent}%` }}
+                          />
+                        </div>
+
+                        <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                          <span>{levelInfo.xpIntoCurrentLevel} / {levelInfo.xpNeededForNextLevel} XP</span>
+                          <span>Faltam {levelInfo.xpRemaining} XP</span>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            playSound('click');
+                            setIsUserMenuOpen(false);
+                            if (onOpenLevelModal) onOpenLevelModal();
+                          }}
+                          className="w-full mt-2 py-1 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-200 text-[10px] font-black transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Award className="w-3 h-3 text-amber-500" />
+                          <span>Ver Jornada de Níveis & Vantagens</span>
+                        </button>
+                      </div>
+
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 px-2 py-0.5">
-                        Ofensiva: <strong className="text-amber-600 dark:text-amber-400">{user.streak} dias</strong> • XP:{' '}
+                        Ofensiva: <strong className="text-amber-600 dark:text-amber-400">{user.streak} dias</strong> • Total XP:{' '}
                         <strong className="text-slate-700 dark:text-slate-200">{user.xp}</strong>
                       </div>
 

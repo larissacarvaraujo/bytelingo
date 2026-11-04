@@ -114,6 +114,7 @@ export interface NotificationPreferences {
 }
 
 export interface UserProfile {
+  studentName?: string;
   theme?: ThemeMode;
   notificationPreferences?: NotificationPreferences;
   hearts: number;

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Check, Lock, Star, Gift, BookOpen, Sparkles, Flame, ShieldCheck, Play } from 'lucide-react';
+import { Check, Lock, Star, Gift, BookOpen, Sparkles, Flame, ShieldCheck, Play, Zap, Award } from 'lucide-react';
 import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 import { Language, Lesson, Track, UserProfile } from '../types';
 import { MascotByte } from './MascotByte';
 import { playSound } from '../utils/sound';
+import { getUserLevelInfo } from '../utils/levelHelper';
 
 interface LearningPathProps {
   track: Track;
@@ -15,6 +16,10 @@ interface LearningPathProps {
   onClaimChest: (gems: number) => void;
   onOpenStreakCalendar?: () => void;
   onOpenByteChat?: () => void;
+  onOpenLevelModal?: () => void;
+  onOpenPlacementTest?: (targetUnitId?: string) => void;
+  onOpenCertificate?: (track?: Track) => void;
+  onOpenAchievement?: (track: Track) => void;
 }
 
 export const LearningPath: React.FC<LearningPathProps> = ({
@@ -26,9 +31,14 @@ export const LearningPath: React.FC<LearningPathProps> = ({
   onClaimChest,
   onOpenStreakCalendar,
   onOpenByteChat,
+  onOpenLevelModal,
+  onOpenPlacementTest,
+  onOpenCertificate,
+  onOpenAchievement,
 }) => {
   const [chestOpened, setChestOpened] = useState<{ [id: string]: boolean }>({});
   const [selectedGuidebookUnit, setSelectedGuidebookUnit] = useState<string | null>(null);
+  const levelInfo = getUserLevelInfo(user.xp);
 
   // Undulating offset pattern for Duolingo nodes
   const offsetClasses = [
@@ -46,11 +56,43 @@ export const LearningPath: React.FC<LearningPathProps> = ({
     <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
       {/* Main Path Column (2 cols on large screen) */}
       <div className="lg:col-span-2 flex flex-col items-center">
+        {/* Placement Test / Fast-Track Banner */}
+        {onOpenPlacementTest && (
+          <div className="w-full max-w-lg mb-8 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/10 border-2 border-amber-300 dark:border-amber-700/80 rounded-3xl p-4 sm:p-5 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-xl shadow-xs shrink-0">
+                ⚡
+              </div>
+              <div>
+                <h4 className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-200 leading-tight">
+                  Já domina algum conteúdo?
+                </h4>
+                <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 font-medium leading-tight mt-0.5">
+                  Faça o Teste de Nivelamento para pular fases e desbloquear unidades avançadas!
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                playSound('click');
+                onOpenPlacementTest();
+              }}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-xs shrink-0 transition-transform hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+            >
+              Pular Etapas
+            </button>
+          </div>
+        )}
+
         {track.units.map((unit, unitIdx) => {
           const completedInUnit = unit.lessons.filter((l) => user.completedLessonIds.includes(l.id)).length;
           const totalInUnit = unit.lessons.length;
           const unitProgressPct = totalInUnit > 0 ? Math.round((completedInUnit / totalInUnit) * 100) : 0;
           const isUnitCompleted = completedInUnit === totalInUnit && totalInUnit > 0;
+          const isUnitPrevCompleted =
+            unitIdx === 0
+              ? true
+              : track.units[unitIdx - 1].lessons.every((l) => user.completedLessonIds.includes(l.id));
 
           return (
             <div key={unit.id} className="w-full max-w-lg mb-12">
@@ -163,6 +205,20 @@ export const LearningPath: React.FC<LearningPathProps> = ({
                         : `Faltam ${totalInUnit - completedInUnit} lições para completar o bloco atual.`}
                     </span>
                   </div>
+
+                  {/* Fast Skip button on locked unit */}
+                  {unitIdx > 0 && !isUnitPrevCompleted && onOpenPlacementTest && (
+                    <button
+                      onClick={() => {
+                        playSound('click');
+                        onOpenPlacementTest(unit.id);
+                      }}
+                      className="mt-3 w-full py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer hover:scale-[1.02] active:scale-95"
+                    >
+                      <Zap className="w-3.5 h-3.5 fill-amber-950" />
+                      <span>Fazer Teste de Nivelamento para Pular até esta Unidade</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Decorative background shape */}
@@ -175,11 +231,9 @@ export const LearningPath: React.FC<LearningPathProps> = ({
                 const isCompleted = user.completedLessonIds.includes(lesson.id);
                 // Active if previous is completed or it is the very first lesson
                 const isPrevCompleted =
-                  lessonIdx === 0 && unitIdx === 0
-                    ? true
-                    : lessonIdx > 0
-                    ? user.completedLessonIds.includes(unit.lessons[lessonIdx - 1].id)
-                    : true;
+                  lessonIdx === 0
+                    ? isUnitPrevCompleted
+                    : user.completedLessonIds.includes(unit.lessons[lessonIdx - 1].id);
                 const isCurrent = !isCompleted && isPrevCompleted;
                 const isLocked = !isCompleted && !isCurrent;
 
@@ -277,7 +331,102 @@ export const LearningPath: React.FC<LearningPathProps> = ({
           </div>
         );
       })}
-    </div>
+
+        {/* Course Completion & Certificate Section */}
+        {(() => {
+          const allTrackLessons = track.units.flatMap((u) => u.lessons);
+          const totalTrackLessons = allTrackLessons.length;
+          const completedTrackLessons = allTrackLessons.filter((l) =>
+            user.completedLessonIds.includes(l.id)
+          ).length;
+          const isTrackComplete = completedTrackLessons === totalTrackLessons && totalTrackLessons > 0;
+          const progressPct =
+            totalTrackLessons > 0
+              ? Math.round((completedTrackLessons / totalTrackLessons) * 100)
+              : 0;
+
+          return (
+            <div className="w-full max-w-lg mb-12">
+              {isTrackComplete ? (
+                <div className="relative overflow-hidden bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 rounded-3xl p-6 text-white shadow-xl border-4 border-amber-300 dark:border-amber-400">
+                  <div className="relative z-10 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-white text-amber-600 flex items-center justify-center text-3xl shadow-md mb-2">
+                      🎓
+                    </div>
+                    <span className="text-[11px] font-black uppercase tracking-widest text-amber-100">
+                      Parabéns! Trilha Concluída
+                    </span>
+                    <h3 className="text-xl sm:text-2xl font-black mt-1 leading-tight">
+                      Curso de {track.name} Finalizado!
+                    </h3>
+                    <p className="text-xs sm:text-sm text-amber-100 mt-1.5 max-w-md">
+                      Você dominou todas as 5 unidades e 11 etapas práticas de {track.name}. Formalize sua conquista emitindo seu Certificado e compartilhando seu diploma!
+                    </p>
+                    <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+                      <button
+                        onClick={() => {
+                          playSound('levelup');
+                          onOpenAchievement?.(track);
+                        }}
+                        className="px-5 py-2.5 rounded-2xl bg-white text-amber-950 font-black text-xs sm:text-sm shadow-lg hover:bg-amber-50 active:scale-95 transition-all cursor-pointer flex items-center gap-2"
+                      >
+                        <Award className="w-4 h-4 text-amber-600" />
+                        <span>Ver Conquista & Compartilhar</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          playSound('click');
+                          onOpenCertificate?.(track);
+                        }}
+                        className="px-4 py-2.5 rounded-2xl bg-amber-600/80 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm border border-amber-300/40 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <span>Certificado PDF</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border-2 border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-4 transition-colors">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 flex items-center justify-center text-2xl shrink-0">
+                      🎓
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900 dark:text-white leading-tight">
+                        Certificado do Curso de {track.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {completedTrackLessons} de {totalTrackLessons} lições concluídas ({progressPct}%)
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => {
+                        playSound('click');
+                        onOpenAchievement?.(track);
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100 border border-amber-300 dark:border-amber-700 transition-colors cursor-pointer"
+                    >
+                      Conquista
+                    </button>
+                    <button
+                      onClick={() => {
+                        playSound('click');
+                        onOpenCertificate?.(track);
+                      }}
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+                    >
+                      Ver Modelo
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
 
       {/* Side HUD & Companion Column */}
       <div className="hidden lg:flex flex-col gap-6">
@@ -327,6 +476,68 @@ export const LearningPath: React.FC<LearningPathProps> = ({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* User Level Progression Card */}
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border-2 border-slate-200 dark:border-slate-800 shadow-xs transition-colors">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center text-xl shadow-xs">
+                {levelInfo.badgeIcon}
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
+                    Nível {levelInfo.level}
+                  </h4>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md border border-amber-300 dark:border-amber-700/80">
+                    {levelInfo.progressPercent}%
+                  </span>
+                </div>
+                <p className="text-xs text-amber-600 dark:text-amber-400 font-extrabold truncate max-w-[170px]">
+                  {levelInfo.title}
+                </p>
+              </div>
+            </div>
+
+            <div className="text-right">
+              <span className="text-xs font-black text-slate-700 dark:text-slate-300 tabular-nums">
+                {user.xp} XP
+              </span>
+              <div className="text-[10px] text-slate-400">Total</div>
+            </div>
+          </div>
+
+          {/* Level Progress Bar */}
+          <div className="space-y-1.5 mb-3">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+              <span>{levelInfo.xpIntoCurrentLevel} / {levelInfo.xpNeededForNextLevel} XP</span>
+              <span className="text-amber-600 dark:text-amber-400 font-bold">
+                Faltam {levelInfo.xpRemaining} XP
+              </span>
+            </div>
+            <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
+              <div
+                className="h-full bg-gradient-to-r from-amber-400 via-yellow-400 to-emerald-500 rounded-full transition-all duration-500 shadow-2xs"
+                style={{ width: `${levelInfo.progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mb-3">
+            🎁 <strong>Vantagem:</strong> {levelInfo.perk}
+          </p>
+
+          <button
+            onClick={() => {
+              playSound('click');
+              if (onOpenLevelModal) onOpenLevelModal();
+            }}
+            className="w-full py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 font-extrabold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+          >
+            <Award className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+            <span>Ver Jornada de Níveis</span>
+          </button>
         </div>
 
         {/* Streak Calendar Promo Card */}

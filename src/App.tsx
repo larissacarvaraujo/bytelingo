@@ -15,7 +15,13 @@ import { QuickPracticeModal } from './components/QuickPracticeModal';
 import { StreakCalendarModal } from './components/StreakCalendarModal';
 import { ByteChatModal } from './components/ByteChatModal';
 import { AuthModal } from './components/AuthModal';
-import { Language, Lesson, UserProfile, NotificationPreferences } from './types';
+import { LevelModal } from './components/LevelModal';
+import { PlacementTestModal } from './components/PlacementTestModal';
+import { CertificateModal } from './components/CertificateModal';
+import { CertificateAchievementView } from './components/CertificateAchievementView';
+import confetti from 'canvas-confetti';
+import { checkHasLeveledUp } from './utils/levelHelper';
+import { Language, Lesson, Track, UserProfile, NotificationPreferences } from './types';
 import { INITIAL_DAILY_QUESTS, TRACKS } from './data/curriculum';
 import { getMuted, setMuted, playSound } from './utils/sound';
 import { getWeeklyStreakActivity } from './utils/streakHelper';
@@ -24,6 +30,7 @@ import { auth } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { loadUserProfile, saveUserProfile, logoutUser } from './services/authService';
 import { Map, Terminal, Target, Trophy, ShoppingBag, Flame, Sparkles, Cloud, Check } from 'lucide-react';
+import { CarcaraIcon } from './components/MascotByte';
 
 const STORAGE_KEY = 'bytelingo_user_profile_v2';
 
@@ -81,11 +88,19 @@ export default function App() {
   const [showStreakCalendar, setShowStreakCalendar] = useState(false);
   const [showByteChat, setShowByteChat] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showLevelModal, setShowLevelModal] = useState(false);
+  const [showPlacementModal, setShowPlacementModal] = useState(false);
+  const [placementTargetUnitId, setPlacementTargetUnitId] = useState<string | undefined>(undefined);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+  const [certificateTrack, setCertificateTrack] = useState<Track | undefined>(undefined);
+  const [showAchievementModal, setShowAchievementModal] = useState(false);
+  const [achievementTrack, setAchievementTrack] = useState<Track | undefined>(undefined);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [isMuted, setIsMutedState] = useState(() => getMuted());
   const [recentlyCompletedUnitId, setRecentlyCompletedUnitId] = useState<string | null>(null);
+  const [isByteButtonHovered, setIsByteButtonHovered] = useState(false);
 
   // Apply global dark class to document element based on user theme
   useEffect(() => {
@@ -254,16 +269,19 @@ export default function App() {
   const handleCompleteLesson = ({
     xpGained,
     gemsGained,
+    accuracy = 100,
   }: {
     xpGained: number;
     gemsGained: number;
-    accuracy: number;
+    accuracy?: number;
   }) => {
     if (!activeLesson) return;
 
+    const multiplier = user.inventory.doubleXpMinutesLeft > 0 ? 2 : 1;
+    const totalXp = xpGained * multiplier;
+    const levelUpResult = checkHasLeveledUp(user.xp, user.xp + totalXp);
+
     setUser((prev) => {
-      const multiplier = prev.inventory.doubleXpMinutesLeft > 0 ? 2 : 1;
-      const totalXp = xpGained * multiplier;
       const completedList = prev.completedLessonIds.includes(activeLesson.id)
         ? prev.completedLessonIds
         : [...prev.completedLessonIds, activeLesson.id];
@@ -292,10 +310,36 @@ export default function App() {
     });
 
     if (activeLesson) {
+      if (levelUpResult.leveledUp) {
+        playSound('levelup');
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+        setToastMsg(`🎉 Subiu de nível! Agora você é Nível ${levelUpResult.newLevel}: ${levelUpResult.newLevelInfo.title}!`);
+        setShowLevelModal(true);
+      } else if (accuracy === 100) {
+        playSound('perfect_score');
+      } else {
+        playSound('streak_maintained');
+      }
+
       setRecentlyCompletedUnitId(activeLesson.unitId);
       setTimeout(() => {
         setRecentlyCompletedUnitId(null);
       }, 9000);
+
+      // Check if this lesson finished 100% of the entire course track
+      const allTrackLessons = currentTrack.units.flatMap((u) => u.lessons).map((l) => l.id);
+      const willCompleteTrack = allTrackLessons.every(
+        (id) => id === activeLesson.id || user.completedLessonIds.includes(id)
+      );
+      if (willCompleteTrack && !allTrackLessons.every((id) => user.completedLessonIds.includes(id))) {
+        setTimeout(() => {
+          playSound('levelup');
+          confetti({ particleCount: 160, spread: 90, origin: { y: 0.5 } });
+          setToastMsg(`🎓 CONQUISTA DESBLOQUEADA! Você completou 100% da trilha de ${currentTrack.name}!`);
+          setAchievementTrack(currentTrack);
+          setShowAchievementModal(true);
+        }, 700);
+      }
     }
 
     setActiveLesson(null);
@@ -372,6 +416,44 @@ export default function App() {
 
   const currentTrack = TRACKS.find((t) => t.id === user.activeTrack) || TRACKS[0];
 
+  const handlePassPlacementTest = (
+    targetUnitId: string,
+    stats: { xpEarned: number; gemsEarned: number; skippedLessonsCount: number }
+  ) => {
+    const targetUnitIdx = currentTrack.units.findIndex((u) => u.id === targetUnitId);
+    if (targetUnitIdx <= 0) return;
+
+    // All lessons from preceding units (0 to targetUnitIdx - 1) are marked completed
+    const lessonsToMark = currentTrack.units
+      .slice(0, targetUnitIdx)
+      .flatMap((u) => u.lessons)
+      .map((l) => l.id);
+
+    const oldXp = user.xp;
+    const newXp = user.xp + stats.xpEarned;
+    const levelUp = checkHasLeveledUp(oldXp, newXp);
+
+    setUser((prev) => {
+      const mergedCompleted = Array.from(new Set([...prev.completedLessonIds, ...lessonsToMark]));
+      return {
+        ...prev,
+        completedLessonIds: mergedCompleted,
+        xp: newXp,
+        gems: prev.gems + stats.gemsEarned,
+      };
+    });
+
+    if (levelUp.leveledUp) {
+      playSound('levelup');
+      confetti({ particleCount: 110, spread: 80, origin: { y: 0.5 } });
+      setToastMsg(`🎉 Nivelamento aprovado! Você pulou ${stats.skippedLessonsCount} lições e alcançou o Nível ${levelUp.newLevel}: ${levelUp.newLevelInfo.title}!`);
+      setShowLevelModal(true);
+    } else {
+      playSound('perfect_score');
+      setToastMsg(`⚡ Nivelamento aprovado! Você pulou ${stats.skippedLessonsCount} lições e ganhou +${stats.xpEarned} XP!`);
+    }
+  };
+
   return (
     <div className={`min-h-screen ${user.theme === 'dark' ? 'dark' : ''} bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col selection:bg-emerald-100 dark:selection:bg-emerald-900 selection:text-emerald-900 dark:selection:text-emerald-100 pb-16 lg:pb-0 transition-colors duration-200`}>
       {/* Top Navbar */}
@@ -385,6 +467,11 @@ export default function App() {
         onOpenLeaderboard={() => setShowLeaderboard(true)}
         onOpenStreakCalendar={() => setShowStreakCalendar(true)}
         onOpenByteChat={() => setShowByteChat(true)}
+        onOpenLevelModal={() => setShowLevelModal(true)}
+        onOpenCertificate={() => {
+          setCertificateTrack(currentTrack);
+          setShowCertificateModal(true);
+        }}
         currentUser={currentUser}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
@@ -420,6 +507,19 @@ export default function App() {
           onClaimChest={handleClaimChest}
           onOpenStreakCalendar={() => setShowStreakCalendar(true)}
           onOpenByteChat={() => setShowByteChat(true)}
+          onOpenLevelModal={() => setShowLevelModal(true)}
+          onOpenPlacementTest={(unitId) => {
+            setPlacementTargetUnitId(unitId);
+            setShowPlacementModal(true);
+          }}
+          onOpenCertificate={(t) => {
+            setCertificateTrack(t || currentTrack);
+            setShowCertificateModal(true);
+          }}
+          onOpenAchievement={(t) => {
+            setAchievementTrack(t || currentTrack);
+            setShowAchievementModal(true);
+          }}
         />
       </main>
 
@@ -518,23 +618,88 @@ export default function App() {
         />
       )}
 
-      {/* Floating Byte Tutor Button */}
+      {/* User Level Progression Modal */}
+      {showLevelModal && (
+        <LevelModal
+          user={user}
+          onClose={() => setShowLevelModal(false)}
+        />
+      )}
+
+      {/* Placement Test / Skipping Modal */}
+      {showPlacementModal && (
+        <PlacementTestModal
+          track={currentTrack}
+          user={user}
+          initialUnitId={placementTargetUnitId}
+          onClose={() => setShowPlacementModal(false)}
+          onPassTest={handlePassPlacementTest}
+        />
+      )}
+
+      {/* Certificate Modal */}
+      {showCertificateModal && (
+        <CertificateModal
+          user={user}
+          initialTrack={certificateTrack || currentTrack}
+          onClose={() => setShowCertificateModal(false)}
+          onOpenAchievement={(track) => {
+            setShowCertificateModal(false);
+            setAchievementTrack(track);
+            setShowAchievementModal(true);
+          }}
+          onUpdateStudentName={(newName) => {
+            setUser((prev) => ({ ...prev, studentName: newName }));
+            setToastMsg(`Nome atualizado no certificado: ${newName}!`);
+          }}
+        />
+      )}
+
+      {/* Certificate Achievement View (Stylized Shareable Diploma Graphic) */}
+      {showAchievementModal && (
+        <CertificateAchievementView
+          user={user}
+          track={achievementTrack || currentTrack}
+          onClose={() => setShowAchievementModal(false)}
+          onOpenFullCertificate={() => {
+            setShowAchievementModal(false);
+            setCertificateTrack(achievementTrack || currentTrack);
+            setShowCertificateModal(true);
+          }}
+          onUpdateStudentName={(newName) => {
+            setUser((prev) => ({ ...prev, studentName: newName }));
+            setToastMsg(`Nome atualizado no diploma: ${newName}!`);
+          }}
+        />
+      )}
+
+      {/* Floating Byte Tutor Button with Carcará Mascot */}
       <button
         onClick={() => {
           playSound('click');
           setShowByteChat(true);
         }}
-        className="fixed bottom-20 lg:bottom-6 right-5 z-40 bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white p-3 sm:px-4 sm:py-3 rounded-full shadow-2xl border-2 border-emerald-300/40 flex items-center gap-2.5 group transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-        title="Abrir Byte Tutor IA (Gemini 3.8 Flash)"
+        onMouseEnter={() => setIsByteButtonHovered(true)}
+        onMouseLeave={() => setIsByteButtonHovered(false)}
+        onFocus={() => setIsByteButtonHovered(true)}
+        onBlur={() => setIsByteButtonHovered(false)}
+        className="fixed bottom-20 lg:bottom-6 right-5 z-40 bg-gradient-to-tr from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white p-2.5 sm:px-4 sm:py-2.5 rounded-full shadow-2xl border-2 border-emerald-300/40 flex items-center gap-2.5 group transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+        title="Abrir Byte Tutor IA - Seu Carcará Mentor (Gemini 3.8 Flash)"
         aria-label="Abrir Byte Tutor IA"
       >
-        <span className="text-2xl animate-bounce">🦉</span>
+        <div className="shrink-0 flex items-center justify-center">
+          <CarcaraIcon
+            size={32}
+            animation={isByteButtonHovered ? 'celebration' : 'idle'}
+            mood="tutor"
+          />
+        </div>
         <div className="hidden sm:flex flex-col text-left">
           <span className="text-xs font-black tracking-tight leading-none flex items-center gap-1">
             Byte Tutor IA
             <Sparkles className="w-3 h-3 text-amber-300" />
           </span>
-          <span className="text-[10px] text-emerald-100 font-semibold leading-tight">Dúvidas com Gemini</span>
+          <span className="text-[10px] text-emerald-100 font-semibold leading-tight">Carcará com Gemini</span>
         </div>
         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-400 border-2 border-white rounded-full animate-ping" />
         <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-400 border-2 border-white rounded-full" />

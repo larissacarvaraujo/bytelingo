@@ -19,23 +19,35 @@ function getAudioContext(): AudioContext | null {
 
 export function setMuted(muted: boolean) {
   isMuted = muted;
-  try {
-    localStorage.setItem('bytelingo_sound_muted', muted ? 'true' : 'false');
-  } catch {
-    // Ignore storage errors
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem('bytelingo_sound_muted', muted ? 'true' : 'false');
+    } catch {
+      // Ignore storage errors
+    }
   }
 }
 
 export function getMuted(): boolean {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') return isMuted;
   try {
     return localStorage.getItem('bytelingo_sound_muted') === 'true';
   } catch {
-    return false;
+    return isMuted;
   }
 }
 
-export function playSound(type: 'correct' | 'wrong' | 'click' | 'streak' | 'levelup' | 'gem') {
+export type SoundEffect =
+  | 'correct'
+  | 'wrong'
+  | 'click'
+  | 'streak'
+  | 'levelup'
+  | 'gem'
+  | 'perfect_score'
+  | 'streak_maintained';
+
+export function playSound(type: SoundEffect) {
   if (isMuted || getMuted()) return;
   const ctx = getAudioContext();
   if (!ctx) return;
@@ -138,5 +150,71 @@ export function playSound(type: 'correct' | 'wrong' | 'click' | 'streak' | 'leve
       osc.start(now + idx * 0.08);
       osc.stop(now + 0.6);
     });
+  } else if (type === 'perfect_score') {
+    // Triumphant, sparkling master arpeggio (C5 -> E5 -> G5 -> B5 -> C6 -> E6 chime)
+    const notes = [
+      { f: 523.25, t: 0.00, d: 0.5 },  // C5
+      { f: 659.25, t: 0.07, d: 0.5 },  // E5
+      { f: 783.99, t: 0.14, d: 0.5 },  // G5
+      { f: 987.77, t: 0.21, d: 0.5 },  // B5
+      { f: 1046.5, t: 0.28, d: 0.8 },  // C6 (bright peak)
+      { f: 1318.5, t: 0.35, d: 0.9 },  // E6 (sparkle high finish)
+    ];
+
+    notes.forEach(({ f, t, d }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(f, now + t);
+
+      gain.gain.setValueAtTime(0.14, now + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + t + d);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + t);
+      osc.stop(now + t + d);
+    });
+  } else if (type === 'streak_maintained') {
+    // Fiery, energetic rising cadence celebrating keeping the flame alive (F4 -> A4 -> C5 -> E5)
+    const notes = [
+      { f: 349.23, t: 0.00, d: 0.35 }, // F4
+      { f: 440.00, t: 0.09, d: 0.40 }, // A4
+      { f: 523.25, t: 0.18, d: 0.50 }, // C5
+      { f: 659.25, t: 0.27, d: 0.65 }, // E5
+    ];
+
+    // Warm bass thump for streak impact
+    const bass = ctx.createOscillator();
+    const bassGain = ctx.createGain();
+    bass.type = 'sine';
+    bass.frequency.setValueAtTime(140, now);
+    bass.frequency.exponentialRampToValueAtTime(70, now + 0.25);
+    bassGain.gain.setValueAtTime(0.18, now);
+    bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+    bass.connect(bassGain);
+    bassGain.connect(ctx.destination);
+    bass.start(now);
+    bass.stop(now + 0.25);
+
+    notes.forEach(({ f, t, d }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, now + t);
+
+      gain.gain.setValueAtTime(0.15, now + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + t + d);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + t);
+      osc.stop(now + t + d);
+    });
   }
 }
+

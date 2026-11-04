@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ChatMessage, UserProfile } from '../types';
 import { playSound } from '../utils/sound';
+import { CarcaraIcon } from './MascotByte';
 
 interface ByteChatModalProps {
   user: UserProfile;
@@ -26,7 +27,7 @@ const INITIAL_MESSAGES: ChatMessage[] = [
     id: 'msg-welcome-1',
     role: 'assistant',
     content:
-      'Hoo-hoo! 🦉 Olá, eu sou o **Byte**, seu tutor robótico de programação no ByteLingo!\n\nEstou aqui para tirar dúvidas de sintaxe, explicar conceitos de algoritmos, debugar códigos de Python, JavaScript, Rust, Java ou Lógica pura.\n\nSobre o que você gostaria de aprender ou praticar agora?',
+      'Cri-cri-iii! 🦅 Olá, eu sou o **Byte**, seu Carcará tutor de programação no ByteLingo!\n\nEstou aqui para tirar dúvidas de sintaxe, explicar conceitos de algoritmos, debugar códigos de Python, JavaScript, Rust, Java ou Lógica pura.\n\nSobre o que você gostaria de aprender ou praticar agora?',
     timestamp: 'agora',
   },
 ];
@@ -256,8 +257,8 @@ export const ByteChatModal: React.FC<ByteChatModalProps> = ({
         {/* Header */}
         <div className="p-4 sm:px-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between border-b-2 border-emerald-700 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-inner">
-              🦉
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-inner overflow-hidden">
+              <CarcaraIcon size={34} animation="idle" mood="tutor" />
             </div>
             <div>
               <div className="flex items-center gap-2">
@@ -306,8 +307,8 @@ export const ByteChatModal: React.FC<ByteChatModalProps> = ({
                 className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}
               >
                 {!isUser && (
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shrink-0 text-base shadow-xs">
-                    🦉
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                    <CarcaraIcon size={24} animation="none" mood="tutor" />
                   </div>
                 )}
 
@@ -340,8 +341,8 @@ export const ByteChatModal: React.FC<ByteChatModalProps> = ({
           {/* Typing Indicator */}
           {isLoading && (
             <div className="flex gap-3 justify-start items-center">
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center text-base">
-                🦉
+              <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 flex items-center justify-center shrink-0 shadow-xs overflow-hidden">
+                <CarcaraIcon size={24} animation="idle" mood="thinking" />
               </div>
               <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-2xl rounded-tl-xs px-4 py-3 flex items-center gap-2 shadow-xs">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Byte está digitando</span>

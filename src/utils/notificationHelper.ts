@@ -1,8 +1,8 @@
 import { NotificationPreferences, UserProfile } from '../types';
 import { playSound } from './sound';
 
-// High-fidelity SVG icon for the Notification API (Byte Owl / Flame mascot)
-export const BYTE_NOTIFICATION_ICON = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><defs><linearGradient id="flame" x1="0%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="%23ea580c"/><stop offset="50%" stop-color="%23f97316"/><stop offset="100%" stop-color="%23fbbf24"/></linearGradient></defs><rect width="100" height="100" rx="28" fill="%230f172a"/><path d="M50 12 C35 28 24 45 24 62 C24 78 35 88 50 88 C65 88 76 78 76 62 C76 45 65 28 50 12 Z" fill="url(%23flame)"/><path d="M50 38 C42 48 36 58 36 68 C36 77 42 82 50 82 C58 82 64 77 64 68 C64 58 58 48 50 38 Z" fill="%23fef08a"/><circle cx="43" cy="62" r="4" fill="%230f172a"/><circle cx="57" cy="62" r="4" fill="%230f172a"/><path d="M47 70 Q50 74 53 70" stroke="%230f172a" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>`;
+// High-fidelity SVG icon for the Notification API (Carcará Byte Mascot)
+export const BYTE_NOTIFICATION_ICON = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="28" fill="%230f172a"/><circle cx="50" cy="50" r="32" fill="%23fef9c3"/><path d="M30 32 C20 20 8 16 2 22 C12 28 20 34 26 40 C14 30 4 34 2 40 C14 42 22 46 28 52 Z" fill="%230f172a"/><path d="M28 32 C38 18 52 16 64 18 C76 20 86 28 90 38 C80 28 66 24 52 24 C40 24 32 28 28 32 Z" fill="%230f172a"/><rect x="22" y="40" width="56" height="22" rx="11" fill="%23020617" stroke="%231e293b" stroke-width="2"/><ellipse cx="38" cy="51" rx="5" ry="6" fill="%2310b981"/><circle cx="40" cy="49" r="1.5" fill="%23ffffff"/><ellipse cx="62" cy="51" rx="5" ry="6" fill="%2310b981"/><circle cx="64" cy="49" r="1.5" fill="%23ffffff"/><polygon points="44,57 56,57 50,65" fill="%23f59e0b"/><path d="M46 59 C47 68 49 74 50 78 C51 74 53 68 54 59 Z" fill="%23334155"/></svg>`;
 
 export type NotificationStatus = 'granted' | 'denied' | 'default' | 'unsupported';
 
